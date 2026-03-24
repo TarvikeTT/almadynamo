@@ -1,0 +1,31 @@
+name: Sync CSV from Azure Blob
+
+on:
+  schedule:
+    - cron: '30 2 * * *'  # 05:30 Suomen aikaa (UTC+2/+3)
+  workflow_dispatch:        # Mahdollistaa manuaalisen ajon
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Download CSV from Azure Blob
+        run: |
+          SAS_URL="${{ secrets.AZURE_BLOB_SAS_URL }}"
+          # Rakennetaan tiedoston URL SAS-tokenilla
+          BASE=$(echo "$SAS_URL" | cut -d'?' -f1)
+          TOKEN=$(echo "$SAS_URL" | cut -d'?' -f2)
+          FILE_URL="${BASE}algolia/tarvike_tarjoukset.csv?${TOKEN}"
+          curl -f -o tarvike_tarjoukset.csv "$FILE_URL"
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add tarvike_tarjoukset.csv
+          git diff --staged --quiet || git commit -m "Auto-update tarvike_tarjoukset.csv"
+          git push
