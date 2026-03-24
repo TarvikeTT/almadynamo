@@ -18,18 +18,20 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Download CSV from Azure Blob
+      - name: Download CSV files from Azure Blob
         run: |
           SAS_URL="${{ secrets.AZURE_BLOB_SAS_URL }}"
           BASE=$(echo "$SAS_URL" | cut -d'?' -f1)
           TOKEN=$(echo "$SAS_URL" | cut -d'?' -f2)
-          FILE_URL="${BASE}algolia/tarvike_tarjoukset.csv?${TOKEN}"
-          curl -f -o tarvike_tarjoukset.csv "$FILE_URL"
+
+          curl -f -o tarvike_tarjoukset.csv "${BASE}algolia/tarvike_tarjoukset.csv?${TOKEN}"
+          curl -f -o tarvike_tarjoukset_ai.csv "${BASE}algolia/tarvike_tarjoukset_ai.csv?${TOKEN}"
+          curl -f -o tarvike_laitetarjoukset.csv "${BASE}algolia/tarvike_laitetarjoukset.csv?${TOKEN}"
 
       - name: Commit and push if changed
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add tarvike_tarjoukset.csv
-          git diff --staged --quiet || git commit -m "Auto-update tarvike_tarjoukset.csv"
+          git add tarvike_tarjoukset.csv tarvike_tarjoukset_ai.csv tarvike_laitetarjoukset.csv
+          git diff --staged --quiet || git commit -m "Auto-update CSV files"
           git push
