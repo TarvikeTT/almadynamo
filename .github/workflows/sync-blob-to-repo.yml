@@ -3,20 +3,24 @@ name: Sync CSV from Azure Blob
 on:
   schedule:
     - cron: '30 2 * * *'  # 05:30 Suomen aikaa (UTC+2/+3)
-  workflow_dispatch:        # Mahdollistaa manuaalisen ajon
+  workflow_dispatch:
 
 jobs:
   sync:
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: write
+
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Download CSV from Azure Blob
         run: |
           SAS_URL="${{ secrets.AZURE_BLOB_SAS_URL }}"
-          # Rakennetaan tiedoston URL SAS-tokenilla
           BASE=$(echo "$SAS_URL" | cut -d'?' -f1)
           TOKEN=$(echo "$SAS_URL" | cut -d'?' -f2)
           FILE_URL="${BASE}algolia/tarvike_tarjoukset.csv?${TOKEN}"
