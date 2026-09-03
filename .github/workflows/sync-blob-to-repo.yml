@@ -7,6 +7,12 @@ on:
     - cron: '30 3 * * *'
   workflow_dispatch:
 
+# Estää kahden ajon päällekkäisyyden, joka johtaa push-konfliktiin.
+# Uusi ajo odottaa edellisen valmistumista sen sijaan että keskeyttäisi sen.
+concurrency:
+  group: sync-blob-to-repo
+  cancel-in-progress: false
+
 jobs:
   sync:
     runs-on: ubuntu-latest
@@ -43,8 +49,37 @@ jobs:
 
       - name: Commit and push if changed
         run: |
+          BRANCH="${{ github.ref_name }}"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          for attempt in 1 2 3; do
+            # Siirretään pohja etähaaran uusimpaan tilaan. Indeksi tulee
+            # etähaarasta, työhakemistoon ladatut CSV:t jäävät paikoilleen,
+            # joten muiden tekemät muutokset muihin tiedostoihin säilyvät.
+            git fetch origin "$BRANCH"
+            git reset --mixed FETCH_HEAD
+
+            git add $FILES
+            if git diff --staged --quiet; then
+              echo "CSV-tiedostot ovat jo ajan tasalla, ei committia."
+              exit 0
+            fi
+
+            git commit -m "Auto-update CSV files"
+
+            if git push origin "HEAD:$BRANCH"; then
+              echo "Push onnistui yrityksellä $attempt."
+              exit 0
+            fi
+
+            echo "Push hylättiin (yritys $attempt/3) - haara ehti muuttua. Yritetään uudelleen."
+            sleep 5
+          done
+
+          echo "Push epäonnistui kolmen yrityksen jälkeen."
+          exit 1
+
           git add $FILES
           git diff --staged --quiet || git commit -m "Auto-update CSV files"
           git push
