@@ -2,7 +2,9 @@ name: Sync CSV from Azure Blob
 
 on:
   schedule:
-    - cron: '30 2 * * *'  # 05:30 Suomen aikaa (UTC+2/+3)
+    # Azure Function ajaa klo 03:00 UTC ja on valmis parissa minuutissa,
+    # joten haetaan vasta 03:30 UTC (06:30 kesäaikaa / 05:30 talviaikaa).
+    - cron: '30 3 * * *'
   workflow_dispatch:
 
 jobs:
@@ -11,6 +13,16 @@ jobs:
 
     permissions:
       contents: write
+
+    env:
+      # Yksi lista, jota molemmat stepit käyttävät. Uusi feedi lisätään vain tähän.
+      FILES: >-
+        tarvike_tarjoukset.csv
+        tarvike_tarjoukset_ai.csv
+        tarvike_laitetarjoukset.csv
+        tarvike_monkijat_feed.csv
+        tarvike_pienkoneet_ja_tyokalut_feed.csv
+        tarvike_metsa_piha_ja_puutarha_feed.csv
 
     steps:
       - name: Checkout repo
@@ -24,14 +36,15 @@ jobs:
           BASE=$(echo "$SAS_URL" | cut -d'?' -f1)
           TOKEN=$(echo "$SAS_URL" | cut -d'?' -f2)
 
-          curl -f -o tarvike_tarjoukset.csv "${BASE}algolia/tarvike_tarjoukset.csv?${TOKEN}"
-          curl -f -o tarvike_tarjoukset_ai.csv "${BASE}algolia/tarvike_tarjoukset_ai.csv?${TOKEN}"
-          curl -f -o tarvike_laitetarjoukset.csv "${BASE}algolia/tarvike_laitetarjoukset.csv?${TOKEN}"
+          for f in $FILES; do
+            echo "Haetaan $f"
+            curl -f -sS -o "$f" "${BASE}algolia/${f}?${TOKEN}"
+          done
 
       - name: Commit and push if changed
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add tarvike_tarjoukset.csv tarvike_tarjoukset_ai.csv tarvike_laitetarjoukset.csv
+          git add $FILES
           git diff --staged --quiet || git commit -m "Auto-update CSV files"
           git push
