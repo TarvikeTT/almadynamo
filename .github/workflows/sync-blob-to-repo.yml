@@ -29,6 +29,7 @@ jobs:
         tarvike_monkijat_feed.csv
         tarvike_pienkoneet_ja_tyokalut_feed.csv
         tarvike_metsa_piha_ja_puutarha_feed.csv
+        tarvike_kelkat_ja_lumilingot_feed.csv
 
     steps:
       - name: Checkout repo
@@ -79,7 +80,3 @@ jobs:
 
           echo "Push epäonnistui kolmen yrityksen jälkeen."
           exit 1
-
-          git add $FILES
-          git diff --staged --quiet || git commit -m "Auto-update CSV files"
-          git push
